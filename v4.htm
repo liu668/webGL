@@ -1,0 +1,498 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" 
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>  
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="em">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <title>3DSOM Pro WebGL viewer</title>
+        <script type="text/javascript" src="v4_files/3dsom_webGL.js"></script>
+        
+        <script type="text/javascript">
+
+function CDSLonShow3D() {
+  document.getElementById('loadingScrn').style.display = 'none';
+  document.getElementById('CDSLholderFS').style.visibility = 'visible';
+ }	
+	
+function CDSLonUpdateProgress(counter) { 
+  document.getElementById('loadingScrn').innerHTML = "Loading " +counter + "%";
+}
+
+function CDSLonUpdateProgressInit(counter) {
+  document.getElementById('loadingScrn').innerHTML = "decompressing " +counter + "%";
+}	
+		 
+function toggle_visibility(id) {
+  var e = document.getElementById(id);
+  if((e.style.display == 'block')||(e.style.display == ''))
+    e.style.display = 'none';
+  else
+   e.style.display = 'block';
+}
+
+var mouseDown = 0;
+var renderModeID = 2;
+
+function autoZoom(dy){
+  if (mouseDown == 1) {
+    zoom(dy);
+    setTimeout("autoZoom("+dy+");",20);
+  }
+}
+            
+function stopAutoZoom() {
+  mouseDown = 0;
+}
+        
+function isFullScreen() {
+  return (
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.mozFullScreenElement ||
+    document.msFullscreenElement);
+}
+
+    
+function fullscreen(){
+  var i = document.getElementById('content');
+if (isFullScreen()) {  // exit full-screen
+  if (document.exitFullscreen) {
+    document.exitFullscreen();
+  } else if (document.webkitExitFullscreen) {
+    document.webkitExitFullscreen();
+  } else if (document.mozCancelFullScreen) {
+    document.mozCancelFullScreen();
+  } else if (document.msExitFullscreen) {
+    document.msExitFullscreen();
+  }
+ }
+ else {
+   // go full-screen
+   if (i.requestFullscreen) {
+     i.requestFullscreen();
+   } else if (i.webkitRequestFullscreen) {
+     i.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+   } else if (i.mozRequestFullScreen) {
+     i.mozRequestFullScreen();
+   } else if (i.msRequestFullscreen) {
+     i.msRequestFullscreen();
+   }
+ }
+		    
+}
+                                
+function updateFSInstructions(msg1,msg2){
+  if(!isFullScreen())  document.getElementById('instructions').innerHTML=msg1;
+  else  document.getElementById('instructions').innerHTML=msg2;
+}
+            
+
+
+function changeIcon(target, newIcon, click){
+  var modeImgs =  ["img_rotate", "img_pan", "img_measure", "img_zoom" ];
+  var modePref =  ["rotate", "pan", "measure", "zoom" ];
+  var modePos = modeImgs.indexOf(target);
+  var i;
+  var iconFolder = "v4_files/icons/";
+  
+  if (modePos >= 0)
+  {
+    if (document.getElementById(modePref[modePos]).checked) return;
+    else if (click) { 
+	for (i = 0; i < modeImgs.length; i++)
+    	{
+		if ((i!=modePos)&&(document.getElementById(modeImgs[i])))
+		 document.getElementById(modeImgs[i]).setAttribute("src", 
+		  iconFolder+modePref[i]+"Normal.png");
+    	}
+	var ubar = document.getElementById('unitsbar');
+    	if ((modePos==2)&&ubar) ubar.style.display='block';
+	else if (ubar) ubar.style.display='none';
+    }	
+  }
+  else if (target == "img_wireframe") {
+    if(click) {
+      document.getElementById('img_textured').setAttribute("src", "v4_files/icons/textured.png");
+      document.getElementById('img_shaded').setAttribute("src", "v4_files/icons/shaded.png");  
+    }
+    else if (renderModeID==0) return;
+  }else if (target == "img_shaded") {
+    if(click) {
+      document.getElementById('img_wireframe').setAttribute("src", "v4_files/icons/wireframe.png");
+      document.getElementById('img_textured').setAttribute("src", "v4_files/icons/textured.png");  
+    }
+    else if (renderModeID==1) return;
+
+  }else if (target == "img_textured") {
+    if(click) {
+      document.getElementById('img_wireframe').setAttribute("src", "v4_files/icons/wireframe.png");
+      document.getElementById('img_shaded').setAttribute("src", "v4_files/icons/shaded.png");  
+    }
+    else if (renderModeID==2) return;
+  }
+  document.getElementById(target).setAttribute("src", newIcon);	
+}           
+            
+function updateInstructions(instruction){
+  if(!instruction) instruction = " Use the mouse to control the object on screen. "
+		     document.getElementById('instructions').innerHTML=instruction;
+}
+
+function preloadImages() {
+  if (document.images) {
+    var img1 = new Image();
+    img1.src = "v4_files/icons/fullScreenLit.png";
+    var img2 = new Image();
+    img2.src = "v4_files/icons/normalScreen.png";
+    var img3 = new Image();
+    img3.src = "v4_files/icons/normalScreenLit.png";
+  }
+}
+        </script>
+        <!-- you can edit the styles  -->
+	<style> 
+	body, html, #CDSLViewer {
+	margin: 0;
+	padding: 0;
+	BORDER: 0;
+	width: 100%;
+	height: 100%;
+	display: block;
+	font-family: arial, sans-serif;
+	}
+        #content { width:100%, height:100%; }
+        body { overflow:auto; text-align:center; 
+                   background-color: #ffffff; }   
+ 
+	#CDSLViewer{
+	width:100%;
+	height:100%;
+	}
+	#CDSLholderFS{
+	position:relative;
+	}
+
+
+	#leftbar{
+	position:absolute;
+	left:4px;
+	top:4px;
+        background-color: #ffffff;
+	padding: 5px;
+	}
+	
+#leftbar{
+	position:absolute;
+	left:4px;
+	top:4px;
+	border-radius: 5px; 
+	-moz-border-radius: 5px; 
+	-webkit-border-radius: 5px; 
+	border: 1px solid #000000;
+        background-color: #ffffff;
+	padding: 5px;
+	}
+	#leftbar img{
+	clear:both;
+	display: block;
+	margin-left: auto;
+	margin-right: auto;
+	}
+        #leftbar span {
+	   width:32px;
+           height:32px;
+           display: block;
+	   margin: 4px 1px 1px 1px;
+	   float:left;
+	   clear:both;
+        }
+
+        #img_fullscreen {
+	   background-image:url(v4_files/icons/fullScreenNormal.png);
+        }
+
+	#img_fullscreen:hover {
+	   background-image:url(v4_files/icons/fullScreenLit.png);
+   
+        }
+	div#content:full-screen #img_fullscreen {
+	   background-image:url(v4_files/icons/normalScreen.png);
+	}
+	div#content:-webkit-full-screen #img_fullscreen {
+	   background-image:url(v4_files/icons/normalScreen.png);
+	}
+	div#content:-moz-full-screen #img_fullscreen {
+	   background-image:url(v4_files/icons/normalScreen.png);
+	}
+	div#content:-ms-full-screen #img_fullscreen
+        {
+	   background-image:url(v4_files/icons/normalScreen.png);
+	}
+	div#content:-o-full-screen #img_fullscreen
+	{
+	   background-image:url(v4_files/icons/normalScreen.png);
+        }
+
+	div#content:full-screen #img_fullscreen:hover {
+	   background-image:url(v4_files/icons/normalScreenLit.png);
+	}
+	div#content:-webkit-full-screen #img_fullscreen:hover {
+	   background-image:url(v4_files/icons/normalScreenLit.png);
+	}
+	div#content:-moz-full-screen #img_fullscreen:hover {
+	   background-image:url(v4_files/icons/normalScreenLit.png);
+	}
+	div#content:-ms-full-screen #img_fullscreen:hover
+        {
+	   background-image:url(v4_files/icons/normalScreenLit.png);
+	}
+	div#content:-o-full-screen #img_fullscreen:hover
+	{
+	   background-image:url(v4_files/icons/normalScreenLit.png);
+        }
+
+	#renderbar{
+	position:absolute;
+	left:64px;
+	top:236px;
+	border-radius: 5px; 
+	-moz-border-radius: 5px; 
+	-webkit-border-radius: 5px; 
+	border: 1px solid #000000;
+        background-color: #ffffff;
+	padding-left: 3px;
+	padding-right: 3px;
+	padding-top: 3px;
+	padding-bottom: 3px;
+	}
+	#unitsbar {
+	position:absolute;
+	left:60px;
+	top:134px;
+	font-size: 8pt;
+	text-align: left;
+	}	
+	.radioUints {
+	float: left;
+	clear: both;
+	}	
+
+	#renderbar img {
+	float: left;
+        padding-left: 3px;
+        padding-right: 3px;
+	}
+	#instructions{
+	display: block;
+	color: #000;
+	font-size: 12px;
+	position: fixed;
+	height: 18px;
+	line-height: 18px;
+	bottom: 5px;
+        left: 0px;
+	width: 100%;
+	margin: 0 5px;
+	padding: 0;
+	white-space: pre;
+	text-align: left;
+	}
+	
+	#CDSLholderFS,	.hidden{
+	visibility: hidden;    
+	}
+	.hidden {
+	position: absolute;
+        top: 0px;
+	}
+	#CDSLholderFS{
+	text-align: center;
+        position: absolute;
+        top: 0px;
+        left: 0px;
+	width:100%;
+	height:100%;
+	}
+	
+	#loadingScrn{
+	padding-top: 20px;
+	font-weight: bold;
+	}
+	.centre{
+	text-align: center;
+	}
+	#loadingImg{
+	vertical-align:middle; 
+	}
+	#som_copyright {
+	position: fixed;
+	font-size: 11px;
+	right: 5px;
+	bottom: 5px;
+	user-select: none;
+	}
+	
+	/* for mobile devices - disable heading and full screen */
+	@media screen and (max-width: 500px), 
+	screen and (max-height: 300px) {
+	#instructions, #renderbar, #leftbar #img_reset, #leftbar #img_settings
+	{
+	display: none;
+	}
+	#unitsbar {
+	left: 4px;
+	top: 168px;
+	}
+	#leftbar img, #leftbar span {
+	width: 24px;
+	height: 24px;
+	background-size: 24px 24px;
+	}
+	}
+	}
+  </style> 
+    </head>
+    
+    <!-- the 3d model download begins after the page has loaded -->
+ <body onload="preloadImages(); setBackgroundColour('#ffffff');
+	setAmbience(1.0);
+	setDiffuse(1.0);
+		  addObject('v4_files/v4.rio');
+		  addObject('v4_files/v41.rio');
+		  addObject('v4_files/v42.rio');
+		  addObject('v4_files/v43.rio');
+		  addObject('v4_files/v44.rio');
+		  setUnits(1.0);
+		  setUp();"
+                  >
+
+       <div id="content"> 
+        <!-- the following element is required -->
+        <div id="loadingScrn" class="centre">Loading... ...Please wait
+        </div>  
+        <!-- the following element is required -->
+        <div id="loadingImg" class="centre"> <img src="v4_files/3dsom_loading.gif" alt="loading..." />
+        </div>
+      <!-- the following element is required - do not edit -->
+      <div id="som_copyright">webGL viewer (c) <a href="http://www.3dsom.com">www.3dsom.com</a>
+      </div>  
+    
+        <!-- the following element is required -->
+        <div id="CDSLholderFS">
+
+            <!-- the following element is required -->
+            <canvas id="CDSLViewer" width="900" height="600" style="cursor:default;"></canvas>
+            <p id="instructions"> Use the mouse to control the object on screen.</p>
+	    <!-- you can reskin the controls using your own icons -->
+		<div id="leftbar">
+            <label for="rotate">
+                <img id="img_rotate" 
+                     src="v4_files/icons/rotateSelected.png" 
+                     onmouseover="changeIcon('img_rotate','v4_files/icons/rotateLit.png'); updateInstructions('Click to enter Rotate mode.');" 
+                     onclick="changeIcon('img_rotate','v4_files/icons/rotateSelected.png',true);"
+                     onmouseout="changeIcon('img_rotate','v4_files/icons/rotateNormal.png'); updateInstructions();"
+                     />
+            </label>
+
+            <label for="pan">
+                <img id="img_pan"
+                     src="v4_files/icons/panNormal.png"
+                     onmouseover="changeIcon('img_pan','v4_files/icons/panLit.png'); updateInstructions('Click to enter Pan mode.');"
+                     onclick="changeIcon('img_pan','v4_files/icons/panSelected.png',true);"
+                     onmouseout="changeIcon('img_pan','v4_files/icons/panNormal.png'); updateInstructions();" 
+                     />                
+            </label>
+
+
+            <img id="img_zoomIn" 
+                 src="v4_files/icons/zoomInNormal.png"
+                 onmouseover="changeIcon('img_zoomIn','v4_files/icons/zoomInLit.png'); updateInstructions('Click to zoom out.');"
+                 onmousedown="changeIcon('img_zoomIn','v4_files/icons/zoomInLit.png',true);mouseDown =1; autoZoom(1.1);"
+                 onmouseout="changeIcon('img_zoomIn','v4_files/icons/zoomInNormal.png'); stopAutoZoom(); updateInstructions();" 
+                 onmouseup="stopAutoZoom();"
+                 />
+
+            <img id="img_zoomOut"
+                 src="v4_files/icons/zoomOutNormal.png"
+                 onmouseover="changeIcon('img_zoomOut','v4_files/icons/zoomOutLit.png'); updateInstructions('Click to zoom in.');"
+                 onmousedown="changeIcon('img_zoomOut','v4_files/icons/zoomOutLit.png',true);mouseDown =1; autoZoom(-1.1);"
+                 onmouseup="stopAutoZoom();"
+                 onmouseout="changeIcon('img_zoomOut','v4_files/icons/zoomOutNormal.png'); stopAutoZoom(); updateInstructions();" 
+                 />
+
+	     <label for="measure">
+                <img id="img_measure"
+                     src="v4_files/icons/measureNormal.png"
+                     onmouseover="changeIcon('img_measure','v4_files/icons/measureLit.png'); updateInstructions('Click to enter measurement mode.');"
+                     onclick="changeIcon('img_measure','v4_files/icons/measureSelected.png',true);"
+                     onmouseout="changeIcon('img_measure','v4_files/icons/measureNormal.png'); updateInstructions();" 
+                     />                
+            </label>
+
+            <img id="img_reset"
+                 src="v4_files/icons/resetNormal.png"
+                 onmouseover="changeIcon('img_reset','v4_files/icons/resetLit.png');updateInstructions('Click to reset model.');"
+                 onclick="changeIcon('img_reset','v4_files/icons/resetLit.png',true);"
+                 onmouseout="changeIcon('img_reset','v4_files/icons/resetNormal.png'); updateInstructions();"
+                 onmousedown="reset();" 
+                 />
+
+	    <span class="imgbutton" id="img_fullscreen" 
+		onmouseover="updateFSInstructions('Click to view in fullscreen.','Click to exit fullscreen.');"
+		  onclick="fullscreen();"></span>
+	  <img id="img_settings"
+                 src="v4_files/icons/settingsNormal.png"
+                 onmouseover="changeIcon('img_settings','v4_files/icons/settingsLit.png');updateInstructions('Click to show render options.');"
+                 onclick="changeIcon('img_settings','v4_files/icons/settingsLit.png',true);"
+                 onmouseout="changeIcon('img_settings','v4_files/icons/settingsNormal.png'); updateInstructions();"
+                 onmousedown="toggle_visibility('renderbar');" 
+                 />
+
+		</div>
+		<div id="renderbar" style="display:none">
+	    <img id="img_wireframe"
+                 src="v4_files/icons/wireframe.png"
+                 onmouseover="changeIcon('img_wireframe','v4_files/icons/wireframeLit.png');updateInstructions('Click to switch to wireframe mode.');"
+                 onclick="changeIcon('img_wireframe','v4_files/icons/wireframeLit.png',true);"
+                 onmouseout="changeIcon('img_wireframe','v4_files/icons/wireframe.png'); updateInstructions();"
+                 onmousedown="setWireframeMode();renderModeID=0;toggle_visibility('renderbar');" 
+                 />
+	    <img id="img_shaded"
+                 src="v4_files/icons/shaded.png"
+                 onmouseover="changeIcon('img_shaded','v4_files/icons/shadedLit.png');updateInstructions('Click to switch to shaded mode.');"
+                 onclick="changeIcon('img_shaded','v4_files/icons/shadedLit.png',true);"
+                 onmouseout="changeIcon('img_shaded','v4_files/icons/shaded.png'); updateInstructions();"
+                 onmousedown="setShadedMode();renderModeID=1;toggle_visibility('renderbar');" 
+                 />
+            <img id="img_textured"
+                 src="v4_files/icons/texturedLit.png"
+                 onmouseover="changeIcon('img_textured','v4_files/icons/texturedLit.png');updateInstructions('Click to switch to textured mode.');"
+                 onclick="changeIcon('img_textured','v4_files/icons/texturedLit.png',true);"
+                 onmouseout="changeIcon('img_textured','v4_files/icons/textured.png'); updateInstructions();"
+                 onmousedown="setTexturedMode();renderModeID=2;toggle_visibility('renderbar');" 
+                 />
+		</div>
+	    <div id="unitsbar" style="display:none">
+	   	<!-- set class to hidden to remove units options -->
+	   	 <div class="radioUnits"><input type="radio" name="measureUnits" onChange="changeUnits();" id="measureMM" value="mm" checked="true">mm</input></div>
+		 <div class="radioUnits"><input type="radio" name="measureUnits" onChange="changeUnits()"; id="measureIN" value="in">in</input></div>
+		 <div class="hidden"><input type="radio" name="measureUnits" onChange="changeUnits()"; id="measureCM" value="cm">cm</input></div>
+		 <div class="hidden"><input type="radio" name="measureUnits" onChange="changeUnits()"; id="measureM" value="m">m</input></div>
+
+       	     </div>
+        </div> 
+        <div class="hidden">
+            <input type="radio" name="controlMode" id="rotate" value="Rotating" checked="true" />
+            <input type="radio" name="controlMode" id="pan" value="Panning" />
+            <input type="radio" name="controlMode" id="zoom" value="Zooming" />
+	    <input type="radio" name="controlMode" id="measure" value="Measuring" />
+            <input type="checkbox" name="hidden" id="resetThis" value="resetThis" /> 
+	</div>
+
+      </div>
+    </body>
+</html>
+
+
+
